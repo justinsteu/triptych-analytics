@@ -17,7 +17,7 @@ rules = [
 [[d1_databases]]
 binding              = "DB"
 database_name        = "triptych-analytics"
-database_id          = "00000000-0000-0000-0000-000000000000"
+database_id          = "27692ffc-9e4c-49a7-9f45-586bbfcfca6a"
 migrations_dir       = "migrations"
 
 # CORS allow-list for the game frontend.

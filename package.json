@@ -1,0 +1,13 @@
+{
+  "name": "triptych-analytics",
+  "version": "1.0.0",
+  "description": "Pseudonymous analytics backend + admin dashboard for the Triptych daily word puzzle.",
+  "private": true,
+  "scripts": {
+    "deploy": "wrangler deploy",
+    "dev": "wrangler dev"
+  },
+  "devDependencies": {
+    "wrangler": "^4.0.0"
+  }
+}

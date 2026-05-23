@@ -1,0 +1,7 @@
+# Triptych Analytics — secrets template
+# Cloudflare's "Deploy with Cloudflare" flow reads this file and prompts you
+# to enter a value for each line during setup. The actual values are stored as
+# encrypted Worker secrets — they are NEVER committed to git.
+
+# Password that gates your admin dashboard. Pick something strong.
+ADMIN_PASSWORD=

@@ -1,6 +1,26 @@
 # Triptych Analytics Backend
 
-Cloudflare Worker + D1 database that collects pseudonymous play stats from the Triptych game and serves a password-protected admin dashboard.
+Pseudonymous analytics + admin dashboard for the [Triptych](https://github.com/justinsteu/triptych) daily word puzzle. Runs on Cloudflare Workers + D1.
+
+## One-click deploy (no Terminal needed)
+
+[![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/justinsteu/triptych-analytics)
+
+Click the button. Cloudflare will:
+
+1. Fork this repo into **your** GitHub account
+2. Create the `triptych-analytics` D1 database in your Cloudflare account
+3. Apply the SQL schema (creates the `plays` and `sessions` tables)
+4. Ask you to enter `ADMIN_PASSWORD` — this gates your dashboard. Pick a strong one.
+5. Build and deploy the Worker
+
+When it finishes (~3 min), Cloudflare shows your live URL — something like:
+
+```
+https://triptych-analytics.YOUR-NAME.workers.dev
+```
+
+That URL **is** your admin dashboard. Open it, type your password.
 
 ## What gets collected
 
@@ -10,154 +30,87 @@ For every finished puzzle:
 - Mode (`daily` / `free` / `custom`), difficulty, attempts used, win/loss, time in seconds, hints used.
 - A SHA-256 hash of the first 100 chars of User-Agent (so we can spot bot waves without storing raw UAs).
 
-For DAU tracking:
+For daily-active-user tracking:
 
 - A heartbeat ping (`clientId` + today's Pacific date) when the game loads.
 
-No IPs are stored. No PII is stored. The `clientId` is meaningless outside the player's own device.
+**No IPs. No PII.** The `clientId` is meaningless outside the player's own device.
 
-## Architecture
+## After your Worker is deployed
 
-```
- ┌──────────────┐    POST /api/submit, /api/ping     ┌─────────────────────┐
- │  Triptych    │ ─────────────────────────────────▶ │ Cloudflare Worker   │
- │  game (PWA)  │                                    │ + D1 database       │
- └──────────────┘                                    │                     │
-                                                     │ GET / (dashboard)   │
- ┌──────────────┐    password → token → fetch        │ GET /api/admin/*    │
- │  You (admin) │ ─────────────────────────────────▶ │                     │
- └──────────────┘                                    └─────────────────────┘
-```
+Two more things to wire it to your game:
 
-One Worker handles both the game's analytics submissions and the admin dashboard. The dashboard HTML is bundled into the Worker.
+### 1. Tell the game where to send data
 
-## One-time setup
+Open `app.jsx` in your `triptych` repo on GitHub. Find this line near the top (~line 929):
 
-### Prerequisites
-
-- A Cloudflare account (free tier is fine)
-- Node 18+ installed locally
-- `npm install -g wrangler` (Cloudflare's CLI)
-
-### 1. Authenticate
-
-```bash
-wrangler login
+```js
+const ANALYTICS_URL = "";
 ```
 
-This opens a browser window. Sign into Cloudflare and authorize.
+Paste your Worker URL between the quotes:
 
-### 2. Create the D1 database
-
-```bash
-cd triptych-backend
-wrangler d1 create triptych-analytics
+```js
+const ANALYTICS_URL = "https://triptych-analytics.YOUR-NAME.workers.dev";
 ```
 
-The CLI prints something like:
+Commit and push. Cloudflare Pages auto-redeploys the game.
 
-```
-✅ Successfully created DB 'triptych-analytics'
-[[d1_databases]]
-binding = "DB"
-database_name = "triptych-analytics"
-database_id = "abc12345-6789-..."
-```
+### 2. (Optional) Lock CORS to your real domain
 
-**Copy the `database_id`** and paste it into `wrangler.toml`, replacing `REPLACE_WITH_D1_DATABASE_ID`.
-
-### 3. Apply the schema
-
-```bash
-wrangler d1 execute triptych-analytics --file=./schema.sql --remote
-```
-
-(The `--remote` flag runs it against the real database, not a local emulator.)
-
-### 4. Set the admin password
-
-Pick something strong — this gates your dashboard.
-
-```bash
-wrangler secret put ADMIN_PASSWORD
-```
-
-You'll be prompted to type the password (it's hidden). Don't commit this anywhere.
-
-### 5. Deploy the Worker
-
-```bash
-wrangler deploy
-```
-
-Wrangler prints your Worker URL — something like:
-
-```
-Published triptych-analytics
-  https://triptych-analytics.YOUR-SUBDOMAIN.workers.dev
-```
-
-**Copy this URL.** You'll need it in two places:
-
-1. **The game's `app.jsx`** — set `ANALYTICS_URL` near the top of the file:
-   ```js
-   const ANALYTICS_URL = "https://triptych-analytics.YOUR-SUBDOMAIN.workers.dev";
-   ```
-   Then redeploy the game (`git push`).
-
-2. **Your bookmarks** — `https://triptych-analytics.YOUR-SUBDOMAIN.workers.dev/` is your admin dashboard. Open it, type your password.
-
-### 6. (Optional) Lock down CORS
-
-Edit `wrangler.toml`'s `ALLOWED_ORIGINS` to list only your real domain(s):
+In your forked `triptych-analytics` repo, edit `wrangler.toml`:
 
 ```toml
 [vars]
-ALLOWED_ORIGINS = "https://triptych.pages.dev,https://triptych.game"
+ALLOWED_ORIGINS = "https://triptych.pages.dev,https://YOUR-CUSTOM-DOMAIN.com"
 ```
 
-Then redeploy:
-
-```bash
-wrangler deploy
-```
-
-## Daily use
-
-- Visit `https://triptych-analytics.YOUR-SUBDOMAIN.workers.dev/`
-- Type password
-- Token is cached in localStorage for 12 hours
-- Hit **Refresh** anytime to pull the latest data
+Commit and push. Cloudflare Workers auto-redeploys (or you can hit "Deploy" in the dashboard).
 
 ## What the dashboard shows
 
 - **KPI tiles**: DAU / WAU / MAU / total players / today's win rate / today's avg attempts / today's avg time / total plays
 - **DAU chart** — daily active devices over the last 30 days
-- **Daily outcomes chart** — plays + wins + avg attempts per day
+- **Daily outcomes chart** — plays, wins, and avg attempts per day
 - **Today's attempts histogram** — distribution of how many tries today's players needed
 - **Mode breakdown table** — past 7 days of plays grouped by mode/difficulty
 
-## Updating the Worker
+Token is cached in your browser's localStorage for 12 hours, so you only type the password ~twice a day.
 
-Edit files, then:
+## API endpoints
+
+Public (no auth):
+
+- `POST /api/submit` — finished play
+- `POST /api/ping` — DAU heartbeat
+
+Admin (Bearer token from `/api/admin/login`):
+
+- `GET /api/admin/overview`
+- `GET /api/admin/dau?days=30`
+- `GET /api/admin/daily?days=30`
+- `GET /api/admin/attempts?date=YYYY-MM-DD`
+- `GET /api/admin/modes?days=7`
+
+## Manual deploy (Terminal users)
+
+If you'd rather use the command line:
 
 ```bash
-wrangler deploy
-```
-
-That's it — re-running `deploy` overwrites the previous version. Secrets and the D1 database persist.
-
-## Schema changes
-
-Add a column? Edit `schema.sql` (write a new `ALTER TABLE` statement) then:
-
-```bash
-wrangler d1 execute triptych-analytics --remote --command "ALTER TABLE plays ADD COLUMN your_new_col TEXT"
+git clone https://github.com/justinsteu/triptych-analytics.git
+cd triptych-analytics
+npx wrangler login
+npx wrangler d1 create triptych-analytics
+# paste the printed database_id into wrangler.toml
+npx wrangler d1 execute triptych-analytics --file=./schema.sql --remote
+npx wrangler secret put ADMIN_PASSWORD
+npx wrangler deploy
 ```
 
 ## Costs
 
-Free tier covers:
+Cloudflare's free tier covers:
+
 - 100,000 Worker requests per day
 - 5 GB of D1 storage
 - 5 million D1 row reads per day
@@ -165,10 +118,10 @@ Free tier covers:
 
 Triptych would need ~50,000 daily players before hitting any limit.
 
-## Privacy notes for your site
+## Privacy note for your game
 
-If you publish this game with telemetry enabled, add a one-line privacy note to your README or footer:
+Add this one-liner to your README or game footer:
 
 > Triptych collects anonymous play stats (mode, attempts, time) tied to a random per-device ID. No personal information is collected or stored.
 
-That's true and accurate.
+That's accurate.

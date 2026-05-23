@@ -12,10 +12,13 @@ rules = [
 # Run once locally:    wrangler d1 create triptych-analytics
 # Then paste the printed database_id below.
 # ─────────────────────────────────────────────────────────────
+# Cloudflare's one-click deploy auto-creates the D1 database and fills in the ID.
+# For manual deploys, replace database_id with the value printed by `wrangler d1 create`.
 [[d1_databases]]
-binding       = "DB"
-database_name = "triptych-analytics"
-database_id   = "REPLACE_WITH_D1_DATABASE_ID"
+binding              = "DB"
+database_name        = "triptych-analytics"
+database_id          = "00000000-0000-0000-0000-000000000000"
+migrations_dir       = "migrations"
 
 # CORS allow-list for the game frontend.
 # Add your custom domain here once you have one.

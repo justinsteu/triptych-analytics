@@ -1,0 +1,26 @@
+name = "triptych-analytics"
+main = "src/worker.js"
+compatibility_date = "2025-09-23"
+
+# Allow importing the HTML dashboard as a module string
+rules = [
+  { type = "Text", globs = ["**/*.html"], fallthrough = true }
+]
+
+# ─────────────────────────────────────────────────────────────
+# D1 database binding
+# Run once locally:    wrangler d1 create triptych-analytics
+# Then paste the printed database_id below.
+# ─────────────────────────────────────────────────────────────
+[[d1_databases]]
+binding       = "DB"
+database_name = "triptych-analytics"
+database_id   = "REPLACE_WITH_D1_DATABASE_ID"
+
+# CORS allow-list for the game frontend.
+# Add your custom domain here once you have one.
+[vars]
+ALLOWED_ORIGINS = "https://triptych.pages.dev,http://localhost:8000,http://localhost:8765"
+
+# Secrets (set via: wrangler secret put ADMIN_PASSWORD)
+#   ADMIN_PASSWORD — gate for the dashboard

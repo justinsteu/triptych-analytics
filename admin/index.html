@@ -1,0 +1,304 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Triptych — Admin</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@500;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+  <style>
+    :root {
+      --bg: #faf9f6;
+      --ink: #1b1a17;
+      --muted: #6b6760;
+      --line: #e7e2d8;
+      --accent: #2f4a3a;
+      --accent-soft: #e9efe9;
+      --warn: #b85a3c;
+      --good: #2f7a4f;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; background: var(--bg); color: var(--ink); font-family: "Inter", system-ui, sans-serif; }
+    h1, h2 { font-family: "Fraunces", Georgia, serif; font-weight: 600; letter-spacing: -0.01em; }
+    h1 { font-size: 28px; margin: 0; }
+    h2 { font-size: 18px; margin: 0 0 12px 0; color: var(--ink); }
+    a { color: var(--accent); }
+
+    .wrap { max-width: 1200px; margin: 0 auto; padding: 32px 24px 80px; }
+    header.top {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 28px; padding-bottom: 18px; border-bottom: 1px solid var(--line);
+    }
+    .pill { font-size: 12px; color: var(--muted); padding: 4px 10px; border-radius: 999px; background: var(--accent-soft); }
+
+    /* Login */
+    .login {
+      max-width: 380px; margin: 80px auto; padding: 28px;
+      background: white; border: 1px solid var(--line); border-radius: 14px;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.03);
+    }
+    .login h1 { margin-bottom: 6px; }
+    .login p { color: var(--muted); margin: 0 0 18px 0; font-size: 14px; }
+    .login input {
+      width: 100%; padding: 11px 13px; border: 1px solid var(--line); border-radius: 10px;
+      font-size: 15px; font-family: inherit; background: var(--bg);
+    }
+    .login button {
+      width: 100%; margin-top: 12px; padding: 11px; border: 0; border-radius: 10px;
+      background: var(--ink); color: var(--bg); font-weight: 600; font-size: 15px; cursor: pointer;
+    }
+    .login button:hover { background: var(--accent); }
+    .err { color: var(--warn); font-size: 13px; margin-top: 10px; min-height: 16px; }
+
+    /* Grid */
+    .grid { display: grid; gap: 16px; grid-template-columns: repeat(4, 1fr); }
+    @media (max-width: 900px) { .grid { grid-template-columns: repeat(2, 1fr); } }
+    .card {
+      background: white; border: 1px solid var(--line); border-radius: 14px; padding: 18px;
+    }
+    .card .label { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; }
+    .card .value { font-family: "Fraunces", serif; font-size: 32px; margin-top: 6px; }
+    .card .sub { color: var(--muted); font-size: 12px; margin-top: 4px; }
+
+    .panel {
+      background: white; border: 1px solid var(--line); border-radius: 14px;
+      padding: 20px; margin-top: 20px;
+    }
+    .panel .head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+    .panel canvas { width: 100% !important; height: 280px !important; }
+
+    table { width: 100%; border-collapse: collapse; font-size: 14px; }
+    th, td { padding: 9px 12px; text-align: left; border-bottom: 1px solid var(--line); }
+    th { font-weight: 600; color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: 0.04em; }
+    tbody tr:hover { background: var(--accent-soft); }
+
+    button.ghost {
+      background: transparent; border: 1px solid var(--line); padding: 7px 13px; border-radius: 8px;
+      color: var(--ink); cursor: pointer; font-size: 13px; font-family: inherit;
+    }
+    button.ghost:hover { background: var(--accent-soft); border-color: var(--accent); }
+    .hidden { display: none !important; }
+
+    .muted { color: var(--muted); font-size: 13px; }
+  </style>
+</head>
+<body>
+
+  <!-- LOGIN -->
+  <section id="login" class="login">
+    <h1>Triptych Admin</h1>
+    <p>Enter the admin password.</p>
+    <form id="loginForm">
+      <input type="password" id="pw" placeholder="Password" autofocus autocomplete="off" />
+      <button type="submit">Sign in</button>
+      <div class="err" id="loginErr"></div>
+    </form>
+  </section>
+
+  <!-- DASHBOARD -->
+  <main id="dash" class="wrap hidden">
+    <header class="top">
+      <div>
+        <h1>Triptych Analytics</h1>
+        <span class="muted" id="todayLabel"></span>
+      </div>
+      <div style="display:flex; gap:8px; align-items:center;">
+        <span class="pill" id="updatedAt">—</span>
+        <button class="ghost" id="refresh">Refresh</button>
+        <button class="ghost" id="logout">Sign out</button>
+      </div>
+    </header>
+
+    <!-- KPI tiles -->
+    <div class="grid" id="kpis"></div>
+
+    <!-- DAU chart -->
+    <section class="panel">
+      <div class="head"><h2>Daily active devices (last 30 days)</h2></div>
+      <canvas id="dauChart"></canvas>
+    </section>
+
+    <!-- Daily success rate + avg attempts -->
+    <section class="panel">
+      <div class="head"><h2>Daily puzzle outcomes (last 30 days)</h2></div>
+      <canvas id="dailyChart"></canvas>
+    </section>
+
+    <!-- Today's attempts histogram -->
+    <section class="panel">
+      <div class="head"><h2>Today's attempts distribution</h2><span class="muted" id="attemptsDate"></span></div>
+      <canvas id="attemptsChart"></canvas>
+    </section>
+
+    <!-- Mode breakdown table -->
+    <section class="panel">
+      <div class="head"><h2>Mode breakdown (last 7 days)</h2></div>
+      <table id="modeTable">
+        <thead><tr><th>Mode</th><th>Difficulty</th><th>Plays</th><th>Win rate</th><th>Avg attempts</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </section>
+  </main>
+
+<script>
+const TOKEN_KEY = "triptych_admin_token";
+
+function getToken() { return localStorage.getItem(TOKEN_KEY); }
+function setToken(t) { if (t) localStorage.setItem(TOKEN_KEY, t); else localStorage.removeItem(TOKEN_KEY); }
+
+async function api(path, opts = {}) {
+  const headers = { "Content-Type": "application/json", ...(opts.headers || {}) };
+  const tok = getToken();
+  if (tok) headers.Authorization = "Bearer " + tok;
+  const res = await fetch(path, { ...opts, headers });
+  if (res.status === 401) { setToken(null); show("login"); throw new Error("unauthorized"); }
+  if (!res.ok) throw new Error("HTTP " + res.status);
+  return res.json();
+}
+
+function show(which) {
+  document.getElementById("login").classList.toggle("hidden", which !== "login");
+  document.getElementById("dash").classList.toggle("hidden", which !== "dash");
+  if (which === "dash") refresh();
+}
+
+document.getElementById("loginForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const pw = document.getElementById("pw").value;
+  const errEl = document.getElementById("loginErr");
+  errEl.textContent = "";
+  try {
+    const r = await fetch("/api/admin/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ password: pw }),
+    });
+    if (!r.ok) throw new Error("Invalid password");
+    const { token } = await r.json();
+    setToken(token);
+    document.getElementById("pw").value = "";
+    show("dash");
+  } catch (e) {
+    errEl.textContent = e.message || "Sign-in failed";
+  }
+});
+
+document.getElementById("logout").addEventListener("click", () => { setToken(null); show("login"); });
+document.getElementById("refresh").addEventListener("click", refresh);
+
+function fmtPct(n) { return (n * 100).toFixed(1) + "%"; }
+function fmtNum(n) { return Number(n || 0).toLocaleString(); }
+function fmtTime(s) {
+  s = Math.round(s || 0);
+  const m = Math.floor(s / 60), r = s % 60;
+  return m ? `${m}m ${r}s` : `${r}s`;
+}
+
+let dauChartRef, dailyChartRef, attemptsChartRef;
+
+async function refresh() {
+  document.getElementById("updatedAt").textContent = "loading…";
+  try {
+    const [ov, dau, daily, attempts, modes] = await Promise.all([
+      api("/api/admin/overview"),
+      api("/api/admin/dau?days=30"),
+      api("/api/admin/daily?days=30"),
+      api("/api/admin/attempts"),
+      api("/api/admin/modes?days=7"),
+    ]);
+
+    document.getElementById("todayLabel").textContent = "Today (Pacific): " + ov.today;
+
+    const kpis = [
+      { label: "DAU", value: fmtNum(ov.dau), sub: "active in last 24h" },
+      { label: "WAU", value: fmtNum(ov.wau), sub: "active in last 7d" },
+      { label: "MAU", value: fmtNum(ov.mau), sub: "active in last 30d" },
+      { label: "Total players", value: fmtNum(ov.totalPlayers), sub: "all time" },
+      { label: "Daily plays today", value: fmtNum(ov.dailyToday.plays), sub: `${fmtPct(ov.dailyToday.winRate)} win rate` },
+      { label: "Avg attempts today", value: (ov.dailyToday.avgAttempts || 0).toFixed(2), sub: "out of 4 max" },
+      { label: "Avg time today", value: fmtTime(ov.dailyToday.avgTimeSeconds), sub: "median solver" },
+      { label: "Total plays", value: fmtNum(ov.totalPlays), sub: "all modes, all time" },
+    ];
+    document.getElementById("kpis").innerHTML = kpis.map(k => `
+      <div class="card">
+        <div class="label">${k.label}</div>
+        <div class="value">${k.value}</div>
+        <div class="sub">${k.sub}</div>
+      </div>
+    `).join("");
+
+    // DAU chart
+    const dauLabels = dau.map(r => r.date);
+    const dauData   = dau.map(r => r.dau);
+    if (dauChartRef) dauChartRef.destroy();
+    dauChartRef = new Chart(document.getElementById("dauChart"), {
+      type: "line",
+      data: { labels: dauLabels, datasets: [{
+        label: "DAU", data: dauData,
+        borderColor: "#2f4a3a", backgroundColor: "rgba(47,74,58,0.08)",
+        tension: 0.25, fill: true, pointRadius: 2,
+      }]},
+      options: { plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } },
+    });
+
+    // Daily outcomes chart
+    const dLabels = daily.map(r => r.date);
+    if (dailyChartRef) dailyChartRef.destroy();
+    dailyChartRef = new Chart(document.getElementById("dailyChart"), {
+      type: "bar",
+      data: { labels: dLabels, datasets: [
+        { label: "Plays",   data: daily.map(r => r.plays),     backgroundColor: "rgba(47,74,58,0.7)", yAxisID: "y" },
+        { label: "Wins",    data: daily.map(r => r.wins),      backgroundColor: "rgba(47,122,79,0.8)", yAxisID: "y" },
+        { label: "Avg attempts", data: daily.map(r => r.avgAttempts || 0), type: "line",
+          borderColor: "#b85a3c", backgroundColor: "rgba(184,90,60,0.15)", yAxisID: "y2", tension: 0.25, pointRadius: 2 },
+      ]},
+      options: {
+        scales: {
+          y: { beginAtZero: true, position: "left", title: { display: true, text: "plays" } },
+          y2:{ beginAtZero: true, position: "right", grid: { display: false }, title: { display: true, text: "avg attempts" }, max: 4 },
+        },
+      },
+    });
+
+    // Attempts histogram (today)
+    document.getElementById("attemptsDate").textContent = attempts.date;
+    const buckets = attempts.buckets;
+    const maxAttempts = 4;
+    const wins = Array.from({length: maxAttempts}, (_,i) => buckets.filter(b => b.attempts === i+1 && b.won === 1).reduce((s,b)=>s+b.n,0));
+    const loss = Array.from({length: maxAttempts}, (_,i) => buckets.filter(b => b.attempts === i+1 && b.won === 0).reduce((s,b)=>s+b.n,0));
+    if (attemptsChartRef) attemptsChartRef.destroy();
+    attemptsChartRef = new Chart(document.getElementById("attemptsChart"), {
+      type: "bar",
+      data: { labels: ["1","2","3","4"], datasets: [
+        { label: "Wins", data: wins, backgroundColor: "rgba(47,122,79,0.8)" },
+        { label: "Losses", data: loss, backgroundColor: "rgba(184,90,60,0.8)" },
+      ]},
+      options: { scales: { x: { stacked: true, title: { display: true, text: "attempts used" } }, y: { stacked: true, beginAtZero: true, title: { display: true, text: "plays" } } } },
+    });
+
+    // Modes table
+    const rows = modes.map(m => `
+      <tr>
+        <td>${m.mode}</td>
+        <td>${m.difficulty || "—"}</td>
+        <td>${fmtNum(m.plays)}</td>
+        <td>${fmtPct((m.wins || 0) / Math.max(m.plays, 1))}</td>
+        <td>${(m.avg_attempts || 0).toFixed(2)}</td>
+      </tr>
+    `).join("");
+    document.querySelector("#modeTable tbody").innerHTML = rows || `<tr><td colspan="5" class="muted">No plays in window.</td></tr>`;
+
+    document.getElementById("updatedAt").textContent = "updated " + new Date().toLocaleTimeString();
+  } catch (e) {
+    document.getElementById("updatedAt").textContent = "error";
+  }
+}
+
+// boot
+if (getToken()) show("dash"); else show("login");
+</script>
+
+</body>
+</html>
